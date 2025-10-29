@@ -288,23 +288,37 @@ export function ThreatMonitor() {
 
   const rescanUrl = useCallback(async (urlId: string, showToast: boolean = true) => {
     // Get the latest URL data
-    const urlsResponse = await fetch('/api/monitored-urls');
-    const allUrls: DbMonitoredUrl[] = await urlsResponse.json();
-    const dbUrl = allUrls.find(u => u.id.toString() === urlId);
-    
-    if (!dbUrl) {
-      if (showToast) toast.error('URL not found');
-      return;
-    }
-
-    if (showToast) {
-      setIsRescanning(true);
-      toast.info('Rescanning URL...');
-    }
-
-    const startTime = Date.now();
-
     try {
+      const urlsResponse = await fetch('/api/monitored-urls');
+      
+      if (!urlsResponse.ok) {
+        if (showToast) toast.error('Failed to fetch URL data');
+        return;
+      }
+      
+      const allUrls: DbMonitoredUrl[] = await urlsResponse.json();
+      
+      // Ensure allUrls is an array
+      if (!Array.isArray(allUrls)) {
+        console.error('API response is not an array:', allUrls);
+        if (showToast) toast.error('Invalid response from server');
+        return;
+      }
+      
+      const dbUrl = allUrls.find(u => u.id.toString() === urlId);
+      
+      if (!dbUrl) {
+        if (showToast) toast.error('URL not found');
+        return;
+      }
+
+      if (showToast) {
+        setIsRescanning(true);
+        toast.info('Rescanning URL...');
+      }
+
+      const startTime = Date.now();
+
       const findings = await analyzeUrlForThreats(dbUrl.url, dbUrl.type);
       const riskScore = calculateRiskScore(findings);
       const scanDuration = Date.now() - startTime;
